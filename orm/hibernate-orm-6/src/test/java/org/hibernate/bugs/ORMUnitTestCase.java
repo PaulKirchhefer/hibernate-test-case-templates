@@ -58,7 +58,7 @@ class ORMUnitTestCase {
     }
 
     @Test
-    void hhh123Test(SessionFactoryScope scope) throws Exception {
+    void hhh19562Test(SessionFactoryScope scope) throws Exception {
         scope.inTransaction(session -> {
             TestReference reference1 = new TestReference();
             reference1.setId(1L);

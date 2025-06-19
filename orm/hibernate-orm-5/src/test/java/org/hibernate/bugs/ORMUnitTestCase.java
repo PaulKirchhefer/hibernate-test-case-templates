@@ -71,7 +71,7 @@ public class ORMUnitTestCase extends BaseCoreFunctionalTestCase {
     }
 
     @Test
-    public void hhh123Test() throws Exception {
+    public void hhh19562Test() throws Exception {
         Session s = openSession();
         setUpData(s);
         s.clear();
