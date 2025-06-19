@@ -17,63 +17,80 @@ package org.hibernate.bugs;
 
 import org.hibernate.Session;
 import org.hibernate.Transaction;
+import org.hibernate.bugs.domain.TestChild;
+import org.hibernate.bugs.domain.TestParent;
+import org.hibernate.bugs.domain.TestReference;
 import org.hibernate.cfg.AvailableSettings;
 import org.hibernate.cfg.Configuration;
 import org.hibernate.testing.junit4.BaseCoreFunctionalTestCase;
 import org.junit.Test;
 
-/**
- * This template demonstrates how to develop a test case for Hibernate ORM, using its built-in unit test framework.
- * Although ORMStandaloneTestCase is perfectly acceptable as a reproducer, usage of this class is much preferred.
- * Since we nearly always include a regression test with bug fixes, providing your reproducer using this method
- * simplifies the process.
- *
- * What's even better?  Fork hibernate-orm itself, add your test case directly to a module's unit tests, then
- * submit it as a PR!
- */
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+
 public class ORMUnitTestCase extends BaseCoreFunctionalTestCase {
 
-	// Add your entities here.
-	@Override
-	protected Class[] getAnnotatedClasses() {
-		return new Class[] {
-//				Foo.class,
-//				Bar.class
-		};
-	}
+    @Override
+    protected Class[] getAnnotatedClasses() {
+        return new Class[]{
+                TestChild.class,
+                TestParent.class,
+                TestReference.class
+        };
+    }
 
-	// If you use *.hbm.xml mappings, instead of annotations, add the mappings here.
-	@Override
-	protected String[] getMappings() {
-		return new String[] {
-//				"Foo.hbm.xml",
-//				"Bar.hbm.xml"
-		};
-	}
-	// If those mappings reside somewhere other than resources/org/hibernate/test, change this.
-	@Override
-	protected String getBaseForMappings() {
-		return "org/hibernate/test/";
-	}
+    @Override
+    protected void configure(Configuration configuration) {
+        super.configure(configuration);
 
-	// Add in any settings that are specific to your test.  See resources/hibernate.properties for the defaults.
-	@Override
-	protected void configure(Configuration configuration) {
-		super.configure( configuration );
+        configuration.setProperty(AvailableSettings.SHOW_SQL, Boolean.TRUE.toString());
+        configuration.setProperty(AvailableSettings.FORMAT_SQL, Boolean.TRUE.toString());
+    }
 
-		configuration.setProperty( AvailableSettings.SHOW_SQL, Boolean.TRUE.toString() );
-		configuration.setProperty( AvailableSettings.FORMAT_SQL, Boolean.TRUE.toString() );
-		//configuration.setProperty( AvailableSettings.GENERATE_STATISTICS, "true" );
-	}
+    void setUpData(Session session) {
+        Transaction tx = session.beginTransaction();
+        TestReference reference1 = new TestReference();
+        reference1.setId(1L);
 
-	// Add your tests, using standard JUnit.
-	@Test
-	public void hhh123Test() throws Exception {
-		// BaseCoreFunctionalTestCase automatically creates the SessionFactory and provides the Session.
-		Session s = openSession();
-		Transaction tx = s.beginTransaction();
-		// Do stuff...
-		tx.commit();
-		s.close();
-	}
+        session.persist(reference1);
+
+        TestChild child1 = new TestChild();
+        child1.setId(1L);
+        TestChild child2 = new TestChild();
+        child2.setId(2L);
+
+        TestParent parent = new TestParent();
+        parent.setId(1L);
+        parent.setChildren(new ArrayList<>());
+        parent.getChildren().add(child1);
+        parent.getChildren().add(child2);
+        session.persist(parent);
+        tx.commit();
+    }
+
+    @Test
+    public void hhh123Test() throws Exception {
+        Session s = openSession();
+        setUpData(s);
+        s.clear();
+
+        Transaction tx = session.beginTransaction();
+        List<TestChild> children = new ArrayList<>();
+        children.add(session.find(TestChild.class, 1L));
+        children.add(session.find(TestChild.class, 2L));
+        for (TestChild child : children) {
+            TestReference unmanagedReference = new TestReference();
+            unmanagedReference.setId(1L);
+            child.setReference(unmanagedReference);
+        }
+        session.flush();
+
+        TestParent parent = session.find(TestParent.class, 1L);
+        assertDoesNotThrow(() -> parent.getChildren().size());
+
+        tx.commit();
+        s.close();
+    }
 }
